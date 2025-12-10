@@ -1,0 +1,20 @@
+{
+    "name": "LS_AzureSQL_Control",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
+    "properties": {
+        "type": "AzureSqlDatabase",
+        "typeProperties": {
+            "connectionString": "Server=tcp:adf-databricks.database.windows.net,1433;Database=ADF-Databricks;",
+            "userName": {
+                "type": "AzureKeyVaultSecret",
+                "store": {"referenceName": "LS_KeyVault", "type": "LinkedServiceReference"},
+                "secretName": "sql-username"
+            },
+            "password": {
+                "type": "AzureKeyVaultSecret",
+                "store": {"referenceName": "LS_KeyVault", "type": "LinkedServiceReference"},
+                "secretName": "sql-password"
+            }
+        }
+    }
+}

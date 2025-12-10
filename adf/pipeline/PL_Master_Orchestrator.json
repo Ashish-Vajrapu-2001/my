@@ -1,0 +1,74 @@
+{
+    "name": "PL_Master_Orchestrator",
+    "properties": {
+        "activities": [
+            {
+                "name": "Get_Table_List",
+                "type": "Lookup",
+                "typeProperties": {
+                    "source": {
+                        "type": "AzureSqlSource",
+                        "sqlReaderQuery": "EXEC control.sp_GetTableLoadOrder"
+                    },
+                    "dataset": {
+                        "referenceName": "DS_ControlDB",
+                        "type": "DatasetReference"
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "ForEach_Table",
+                "type": "ForEach",
+                "dependsOn": [
+                    { "activity": "Get_Table_List", "dependencyConditions": ["Succeeded"] }
+                ],
+                "typeProperties": {
+                    "items": "@activity('Get_Table_List').output.value",
+                    "isSequential": true,
+                    "activities": [
+                        {
+                            "name": "Route_By_Status",
+                            "type": "IfCondition",
+                            "typeProperties": {
+                                "expression": "@equals(item().initial_load_completed, false)",
+                                "ifTrueActivities": [
+                                    {
+                                        "name": "Run_Initial_Load",
+                                        "type": "ExecutePipeline",
+                                        "typeProperties": {
+                                            "pipeline": {
+                                                "referenceName": "PL_Initial_Load_Single_Table",
+                                                "type": "PipelineReference"
+                                            },
+                                            "parameters": {
+                                                "schema_name": "@item().source_schema",
+                                                "table_name": "@item().table_name"
+                                            }
+                                        }
+                                    }
+                                ],
+                                "ifFalseActivities": [
+                                    {
+                                        "name": "Run_Incremental_CDC",
+                                        "type": "ExecutePipeline",
+                                        "typeProperties": {
+                                            "pipeline": {
+                                                "referenceName": "PL_Incremental_CDC_Single_Table",
+                                                "type": "PipelineReference"
+                                            },
+                                            "parameters": {
+                                                "schema_name": "@item().source_schema",
+                                                "table_name": "@item().table_name"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}

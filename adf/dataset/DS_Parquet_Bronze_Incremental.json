@@ -1,0 +1,27 @@
+{
+    "name": "DS_Parquet_Bronze_Incremental",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "LS_AzureDataLakeStorage",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "source_system_code": {"type": "String"},
+            "schema_name": {"type": "String"},
+            "table_name": {"type": "String"},
+            "run_id": {"type": "String"}
+        },
+        "type": "Parquet",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "folderPath": {
+                    "value": "bronze/@{dataset().source_system_code}/@{dataset().schema_name}/@{dataset().table_name}/incremental/@{dataset().run_id}",
+                    "type": "Expression"
+                },
+                "fileSystem": "datalake"
+            },
+            "compressionCodec": "snappy"
+        }
+    }
+}

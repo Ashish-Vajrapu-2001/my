@@ -1,0 +1,75 @@
+{
+    "name": "PL_Initial_Load_Single_Table",
+    "properties": {
+        "parameters": {
+            "schema_name": {"type": "String"},
+            "table_name": {"type": "String"}
+        },
+        "activities": [
+            {
+                "name": "Copy_Initial_Data",
+                "type": "Copy",
+                "inputs": [
+                    {
+                        "referenceName": "DS_AzureSQL_Source",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": "@pipeline().parameters.schema_name",
+                            "table_name": "@pipeline().parameters.table_name"
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "DS_Parquet_Bronze_Initial",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "source_system_code": "SRC-001",
+                            "schema_name": "@pipeline().parameters.schema_name",
+                            "table_name": "@pipeline().parameters.table_name",
+                            "timestamp": "@utcnow()"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "NB_Initial_Process",
+                "type": "DatabricksNotebook",
+                "dependsOn": [
+                    { "activity": "Copy_Initial_Data", "dependencyConditions": ["Succeeded"] }
+                ],
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureDatabricks",
+                    "type": "LinkedServiceReference"
+                },
+                "typeProperties": {
+                    "notebookPath": "/bronze/Initial_Load_Dynamic",
+                    "baseParameters": {
+                        "schema_name": "@pipeline().parameters.schema_name",
+                        "table_name": "@pipeline().parameters.table_name",
+                        "pipeline_run_id": "@pipeline().RunId"
+                    }
+                }
+            },
+            {
+                "name": "SP_Log_Failure",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    { "activity": "NB_Initial_Process", "dependencyConditions": ["Failed"] }
+                ],
+                "linkedServiceName": { "referenceName": "LS_AzureSQL_Control", "type": "LinkedServiceReference" },
+                "typeProperties": {
+                    "storedProcedureName": "[control].[sp_UpdateTableMetadata]",
+                    "storedProcedureParameters": {
+                        "SchemaName": { "value": "@pipeline().parameters.schema_name", "type": "String" },
+                        "TableName": { "value": "@pipeline().parameters.table_name", "type": "String" },
+                        "Status": { "value": "Failed", "type": "String" },
+                        "PipelineRunId": { "value": "@pipeline().RunId", "type": "String" },
+                        "PipelineName": { "value": "PL_Initial_Load_Single_Table", "type": "String" },
+                        "ErrorMessage": { "value": "Notebook execution failed", "type": "String" }
+                    }
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,85 @@
+{
+    "name": "PL_Incremental_CDC_Single_Table",
+    "properties": {
+        "parameters": {
+            "schema_name": {"type": "String"},
+            "table_name": {"type": "String"}
+        },
+        "activities": [
+            {
+                "name": "Lookup_Current_Version",
+                "type": "Lookup",
+                "typeProperties": {
+                    "source": {
+                        "type": "AzureSqlSource",
+                        "sqlReaderQuery": {
+                            "value": "SELECT last_sync_version FROM control.table_metadata WHERE source_schema = '@{pipeline().parameters.schema_name}' AND table_name = '@{pipeline().parameters.table_name}'",
+                            "type": "Expression"
+                        }
+                    },
+                    "dataset": { "referenceName": "DS_ControlDB", "type": "DatasetReference" }
+                }
+            },
+            {
+                "name": "Copy_CDC_Data",
+                "type": "Copy",
+                "dependsOn": [{"activity": "Lookup_Current_Version", "dependencyConditions": ["Succeeded"]}],
+                "inputs": [
+                    {
+                        "referenceName": "DS_AzureSQL_Source",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": "@pipeline().parameters.schema_name",
+                            "table_name": "@pipeline().parameters.table_name"
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "DS_Parquet_Bronze_Incremental",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "source_system_code": "SRC-001",
+                            "schema_name": "@pipeline().parameters.schema_name",
+                            "table_name": "@pipeline().parameters.table_name",
+                            "run_id": "@pipeline().RunId"
+                        }
+                    }
+                ],
+                "source": {
+                    "type": "AzureSqlSource",
+                    "sqlReaderStoredProcedureName": "[control].[sp_GetCDCChanges]",
+                    "storedProcedureParameters": {
+                        "SchemaName": { "value": "@pipeline().parameters.schema_name", "type": "String" },
+                        "TableName": { "value": "@pipeline().parameters.table_name", "type": "String" },
+                        "LastSyncVersion": { "value": "@activity('Lookup_Current_Version').output.firstRow.last_sync_version", "type": "Int64" }
+                    }
+                }
+            },
+            {
+                "name": "If_Rows_Found",
+                "type": "IfCondition",
+                "dependsOn": [{"activity": "Copy_CDC_Data", "dependencyConditions": ["Succeeded"]}],
+                "typeProperties": {
+                    "expression": "@greater(activity('Copy_CDC_Data').output.rowsCopied, 0)",
+                    "ifTrueActivities": [
+                        {
+                            "name": "NB_Incremental_Process",
+                            "type": "DatabricksNotebook",
+                            "linkedServiceName": { "referenceName": "LS_AzureDatabricks", "type": "LinkedServiceReference" },
+                            "typeProperties": {
+                                "notebookPath": "/bronze/Incremental_CDC_Dynamic",
+                                "baseParameters": {
+                                    "schema_name": "@pipeline().parameters.schema_name",
+                                    "table_name": "@pipeline().parameters.table_name",
+                                    "pipeline_run_id": "@pipeline().RunId",
+                                    "rows_copied": "@string(activity('Copy_CDC_Data').output.rowsCopied)"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
