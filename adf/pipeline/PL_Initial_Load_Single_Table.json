@@ -40,8 +40,18 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "DS_ControlDB",
-						"type": "DatasetReference"
+						"referenceName": "DS_AzureSQL_Source",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": {
+								"value": "@pipeline().parameters.schema_name",
+								"type": "Expression"
+							},
+							"table_name": {
+								"value": "@pipeline().parameters.table_name",
+								"type": "Expression"
+							}
+						}
 					}
 				],
 				"outputs": [
