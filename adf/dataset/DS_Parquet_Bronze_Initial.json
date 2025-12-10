@@ -1,27 +1,37 @@
 {
-    "name": "DS_Parquet_Bronze_Initial",
-    "properties": {
-        "linkedServiceName": {
-            "referenceName": "LS_AzureDataLakeStorage",
-            "type": "LinkedServiceReference"
-        },
-        "parameters": {
-            "source_system_code": {"type": "String"},
-            "schema_name": {"type": "String"},
-            "table_name": {"type": "String"},
-            "timestamp": {"type": "String"}
-        },
-        "type": "Parquet",
-        "typeProperties": {
-            "location": {
-                "type": "AzureBlobFSLocation",
-                "folderPath": {
-                    "value": "bronze/@{dataset().source_system_code}/@{dataset().schema_name}/@{dataset().table_name}/initial_load/@{dataset().timestamp}",
-                    "type": "Expression"
-                },
-                "fileSystem": "datalake"
-            },
-            "compressionCodec": "snappy"
-        }
-    }
+	"name": "DS_Parquet_Bronze_Initial",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"source_system_code": {
+				"type": "String"
+			},
+			"schema_name": {
+				"type": "String"
+			},
+			"table_name": {
+				"type": "String"
+			},
+			"timestamp": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "bronze/@{dataset().source_system_code}/@{dataset().schema_name}/@{dataset().table_name}/initial_load/@{dataset().timestamp}",
+					"type": "Expression"
+				},
+				"fileSystem": "datalake"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	}
 }
