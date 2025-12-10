@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Lookup_Current_Version",
+				"name": "Lookup_Table_Metadata",
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
@@ -17,7 +17,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "SELECT last_sync_version FROM control.table_metadata WHERE source_schema = '@{pipeline().parameters.schema_name}' AND table_name = '@{pipeline().parameters.table_name}'",
+							"value": "SELECT table_id, source_system_id, schema_name, table_name, primary_key_columns, is_composite_key, last_sync_version FROM control.table_metadata WHERE table_id = '@{pipeline().parameters.table_id}'",
 							"type": "Expression"
 						},
 						"partitionOption": "None"
@@ -33,7 +33,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "Lookup_Current_Version",
+						"activity": "Lookup_Table_Metadata",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -47,6 +47,41 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"storedProcedureParameters": {
+							"SchemaName": {
+								"type": "String",
+								"value": {
+									"value": "@activity('Lookup_Table_Metadata').output.firstRow.schema_name",
+									"type": "Expression"
+								}
+							},
+							"TableName": {
+								"type": "String",
+								"value": {
+									"value": "@activity('Lookup_Table_Metadata').output.firstRow.table_name",
+									"type": "Expression"
+								}
+							},
+							"PrimaryKeyColumns": {
+								"type": "String",
+								"value": {
+									"value": "@activity('Lookup_Table_Metadata').output.firstRow.primary_key_columns",
+									"type": "Expression"
+								}
+							},
+							"LastSyncVersion": {
+								"type": "Int64",
+								"value": {
+									"value": "@activity('Lookup_Table_Metadata').output.firstRow.last_sync_version",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
 					"sink": {
 						"type": "ParquetSink",
 						"storeSettings": {
@@ -60,12 +95,8 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "DS_AzureSQL_Source",
-						"type": "DatasetReference",
-						"parameters": {
-							"schema_name": "@pipeline().parameters.schema_name",
-							"table_name": "@pipeline().parameters.table_name"
-						}
+						"referenceName": "DS_ControlDB",
+						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
@@ -73,31 +104,17 @@
 						"referenceName": "DS_Parquet_Bronze_Incremental",
 						"type": "DatasetReference",
 						"parameters": {
-							"source_system_code": "SRC-001",
-							"schema_name": "@pipeline().parameters.schema_name",
-							"table_name": "@pipeline().parameters.table_name",
-							"run_id": "@pipeline().RunId"
+							"schema_name": {
+								"value": "@activity('Lookup_Table_Metadata').output.firstRow.schema_name",
+								"type": "Expression"
+							},
+							"table_name": {
+								"value": "@activity('Lookup_Table_Metadata').output.firstRow.table_name",
+								"type": "Expression"
+							}
 						}
 					}
-				],
-				"source": {
-					"type": "AzureSqlSource",
-					"sqlReaderStoredProcedureName": "[control].[sp_GetCDCChanges]",
-					"storedProcedureParameters": {
-						"SchemaName": {
-							"value": "@pipeline().parameters.schema_name",
-							"type": "String"
-						},
-						"TableName": {
-							"value": "@pipeline().parameters.table_name",
-							"type": "String"
-						},
-						"LastSyncVersion": {
-							"value": "@activity('Lookup_Current_Version').output.firstRow.last_sync_version",
-							"type": "Int64"
-						}
-					}
-				}
+				]
 			},
 			{
 				"name": "If_Rows_Found",
@@ -131,20 +148,36 @@
 							"typeProperties": {
 								"notebookPath": "/Shared/Final Databricks/databricks/notebooks/bronze/Incremental_CDC_Dynamic",
 								"baseParameters": {
+									"table_id": {
+										"value": "@pipeline().parameters.table_id",
+										"type": "Expression"
+									},
+									"source_system_id": {
+										"value": "@activity('Lookup_Table_Metadata').output.firstRow.source_system_id",
+										"type": "Expression"
+									},
 									"schema_name": {
-										"value": "@pipeline().parameters.schema_name",
+										"value": "@activity('Lookup_Table_Metadata').output.firstRow.schema_name",
 										"type": "Expression"
 									},
 									"table_name": {
-										"value": "@pipeline().parameters.table_name",
+										"value": "@activity('Lookup_Table_Metadata').output.firstRow.table_name",
+										"type": "Expression"
+									},
+									"primary_key_columns": {
+										"value": "@activity('Lookup_Table_Metadata').output.firstRow.primary_key_columns",
+										"type": "Expression"
+									},
+									"incremental_path": {
+										"value": "@concat('bronze/', activity('Lookup_Table_Metadata').output.firstRow.source_system_id, '/', activity('Lookup_Table_Metadata').output.firstRow.schema_name, '/', activity('Lookup_Table_Metadata').output.firstRow.table_name, '/incremental/', pipeline().RunId)",
+										"type": "Expression"
+									},
+									"bronze_base_path": {
+										"value": "/mnt/datalake",
 										"type": "Expression"
 									},
 									"pipeline_run_id": {
 										"value": "@pipeline().RunId",
-										"type": "Expression"
-									},
-									"rows_copied": {
-										"value": "@string(activity('Copy_CDC_Data').output.rowsCopied)",
 										"type": "Expression"
 									}
 								}
@@ -159,10 +192,7 @@
 			}
 		],
 		"parameters": {
-			"schema_name": {
-				"type": "String"
-			},
-			"table_name": {
+			"table_id": {
 				"type": "String"
 			}
 		},
