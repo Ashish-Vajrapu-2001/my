@@ -40,7 +40,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@activity('Get_Table_List').output.value",
+						"value": "@activity('Get_Table_List').output['value']",
 						"type": "Expression"
 					},
 					"isSequential": true,
@@ -86,7 +86,14 @@
 									{
 										"name": "Run_Initial_Load",
 										"type": "ExecutePipeline",
-										"dependsOn": [],
+										"dependsOn": [
+											{
+												"activity": "Set variable1",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
 										"policy": {
 											"secureInput": false
 										},
@@ -106,9 +113,26 @@
 													"type": "Expression"
 												},
 												"SRC": {
-													"value": "@concat('SRC-00', string(item().system_id))",
+													"value": "@variables('src')",
 													"type": "Expression"
 												}
+											}
+										}
+									},
+									{
+										"name": "Set variable1",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "src",
+											"value": {
+												"value": "@concat('SRC-00','''',item().source_system_id,'''')",
+												"type": "Expression"
 											}
 										}
 									}
@@ -119,6 +143,11 @@
 				}
 			}
 		],
+		"variables": {
+			"src": {
+				"type": "String"
+			}
+		},
 		"annotations": []
 	}
 }
