@@ -14,6 +14,11 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
 					"sink": {
 						"type": "ParquetSink",
 						"storeSettings": {
@@ -23,16 +28,20 @@
 							"type": "ParquetWriteSettings"
 						}
 					},
-					"enableStaging": false
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
 				},
 				"inputs": [
 					{
-						"referenceName": "DS_AzureSQL_Source",
-						"type": "DatasetReference",
-						"parameters": {
-							"schema_name": "@pipeline().parameters.schema_name",
-							"table_name": "@pipeline().parameters.table_name"
-						}
+						"referenceName": "DS_ControlDB",
+						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
