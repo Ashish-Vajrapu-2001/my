@@ -49,36 +49,6 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"storedProcedureParameters": {
-							"SchemaName": {
-								"type": "String",
-								"value": {
-									"value": "@activity('Lookup_Table_Metadata').output.firstRow.schema_name",
-									"type": "Expression"
-								}
-							},
-							"TableName": {
-								"type": "String",
-								"value": {
-									"value": "@activity('Lookup_Table_Metadata').output.firstRow.table_name",
-									"type": "Expression"
-								}
-							},
-							"PrimaryKeyColumns": {
-								"type": "String",
-								"value": {
-									"value": "@activity('Lookup_Table_Metadata').output.firstRow.primary_key_columns",
-									"type": "Expression"
-								}
-							},
-							"LastSyncVersion": {
-								"type": "Int64",
-								"value": {
-									"value": "@activity('Lookup_Table_Metadata').output.firstRow.last_sync_version",
-									"type": "Expression"
-								}
-							}
-						},
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -104,12 +74,17 @@
 						"referenceName": "DS_Parquet_Bronze_Incremental",
 						"type": "DatasetReference",
 						"parameters": {
+							"source_system_code": "SRC-001",
 							"schema_name": {
 								"value": "@activity('Lookup_Table_Metadata').output.firstRow.schema_name",
 								"type": "Expression"
 							},
 							"table_name": {
 								"value": "@activity('Lookup_Table_Metadata').output.firstRow.table_name",
+								"type": "Expression"
+							},
+							"run_id": {
+								"value": "@pipeline().RunId",
 								"type": "Expression"
 							}
 						}
