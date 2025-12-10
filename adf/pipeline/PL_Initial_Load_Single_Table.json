@@ -105,6 +105,10 @@
 						"pipeline_run_id": {
 							"value": "@pipeline().RunId",
 							"type": "Expression"
+						},
+						"SRC": {
+							"value": "@pipeline().parameters.SRC",
+							"type": "Expression"
 						}
 					}
 				},
